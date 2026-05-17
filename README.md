@@ -420,6 +420,5 @@ Verified bugs still present in the source (left as-is unless you want them fixed
 
 ## 12. Tech Stack
 
-`pandas` · `numpy` · `scikit-learn` · `Flask` · `joblib` · `matplotlib` · `requests`
+`pandas` · `numpy` · `scikit-learn` · `Flask` · `joblib` · `matplotlib` · `requests` · `xgboost` · `imbalanced-learn` · `seaborn`
 
-(`xgboost`, `imbalanced-learn`, `seaborn` are declared but not currently used.)
