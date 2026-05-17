@@ -383,42 +383,7 @@ distinct **error** state — fixing the prior bug where a 400 rendered as a red
 
 ---
 
-## 11. Known Issues
-
-**Compatibility fixes applied** (minimal, behaviour-preserving — required to run on a current Python/library stack):
-
-- `src/preprocess.py`: removed the `infer_datetime_format=True` argument from `pd.to_datetime(...)` — that keyword was deprecated in pandas 2.0 and **removed** in later versions (this machine has pandas 3.0.2). Modern pandas infers the format automatically, so behaviour is unchanged.
-- `src/train_models.py`: `CalibratedClassifierCV(estimator=model, cv="prefit")` was replaced with the `FrozenEstimator` wrapper (with a fallback to the old API). `cv="prefit"` was removed in scikit-learn 1.6+ (this machine has 1.8.0); `FrozenEstimator` is the supported replacement and preserves the "calibrate an already-fitted model" semantics.
-
-**Frontend redesign (resolved in prior iterations, still in effect):**
-
-The most recent UI iteration applied a high-fidelity Claude Design handoff
-(theme/typography/layout) on top of the structural fixes below — all of which
-remain in place:
-
-- The web UI moved from a single inline HTML/JS string in `app.py` into
-  `src/templates/index.html` + `src/static/{app.js,styles.css}`, served via
-  `render_template`.
-- **Silent category folding fixed:** the six categorical inputs are now
-  dropdowns populated from the new `GET /meta` endpoint (real model categories
-  with human-readable labels), so user input can no longer be silently coerced
-  to `"Other"`.
-- **Error-handling bug fixed:** a `400 {"error": ...}` previously rendered as a
-  red "LIKELY NOT RETURNED" prediction; the new JS branches on `res.ok`/`error`
-  and shows a dedicated error state.
-- A `/meta` serialization edge case was fixed: `cat_keepers.joblib` contains a
-  float `NaN` for `BIKE_COLOUR`, which `jsonify` emitted as invalid JSON;
-  `build_meta()` now coerces it to `"nan"` (labelled "Unknown / not specified").
-
-Verified bugs still present in the source (left as-is unless you want them fixed):
-
-- **`src/client.py` is non-functional:** line 29 contains `args.with-report-delay` (hyphen). This is not a runtime error but a **hard `SyntaxError`** — the script fails to parse and cannot run at all. It should be `args.with_report_delay`.
-- **Hardcoded dataset path:** `src/train_models.py` (line 22) and `src/evaluate_models.py` (line 20) hardcode `DATA_PATH` to a machine-specific absolute folder that does not exist in this repo; the commented-out `os.environ.get("DATA_PATH", "data/bike_thefts.csv")` line just above it shows the intended configurable default. Use the override shown in [§8](#8-setup--usage).
-- **Unused dependencies / stale docs:** `requirements.txt` lists `xgboost`, `imbalanced-learn`, and `seaborn`, and earlier project notes referenced XGBoost, but only Logistic Regression, Decision Tree, and Random Forest are actually trained.
-
----
-
-## 12. Tech Stack
+## 11. Tech Stack
 
 `pandas` · `numpy` · `scikit-learn` · `Flask` · `joblib` · `matplotlib` · `requests` · `xgboost` · `imbalanced-learn` · `seaborn`
 
