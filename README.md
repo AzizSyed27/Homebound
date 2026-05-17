@@ -37,7 +37,7 @@ bicycle-theft-prediction-main/
 │   ├── templates/index.html      # Prediction web UI (Jinja template)
 │   └── static/
 │       ├── app.js                # UI logic: /health + /meta, validation, render
-│       └── styles.css            # High-fidelity theme (Claude Design handoff)
+│       └── styles.css            # High-fidelity theme 
 ├── models/                       # Serialized artifacts (created by training)
 │   ├── random_forest.joblib      # Best model
 │   ├── decision_tree.joblib
@@ -248,7 +248,7 @@ python src/app.py
 ```
 
 Then open **http://127.0.0.1:5001/** in a browser. The UI implements a
-high-fidelity design (Claude Design handoff): a warm "cobalt & coral" theme,
+high-fidelity design: a warm "cobalt & coral" theme,
 Plus Jakarta Sans + JetBrains Mono, a two-column form/result split with a sticky
 result card. It loads category options from `GET /meta` so the six categorical
 fields are **dropdowns of the model's real known values** (no more silent
