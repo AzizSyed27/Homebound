@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Homebound · Will my bike come home?</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- ─── Header ─── -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <circle cx="8" cy="22" r="5.5" stroke="currentColor" stroke-width="2" />
+            <circle cx="24" cy="22" r="5.5" stroke="currentColor" stroke-width="2" />
+            <path d="M8 22 L16 12 L24 22 M16 12 L13 22 M16 12 L20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Homebound &mdash; Will my bike come home?</h1>
+          <p>Toronto bicycle-theft return predictor. <span class="wry">Probably not, but let's check.</span></p>
+        </div>
+      </div>
+      <span class="health-pill" id="health-pill" title="GET /health">
+        <span class="health-dot loading" id="health-dot"></span>
+        <span id="health-text">checking&hellip;</span>
+      </span>
+    </header>
+
+    <!-- ─── Expectation banner ─── -->
+    <div class="banner" id="banner">
+      <div class="banner-icon">!</div>
+      <div class="banner-body">
+        <strong>Don't panic if the number is tiny.</strong>
+        <p>In the training data, only about <b>1&ndash;3%</b> of stolen bikes are ever marked returned. A 2% prediction isn't the model malfunctioning &mdash; that's just Toronto. Adjust the inputs and watch the needle move.</p>
+      </div>
+      <button class="banner-dismiss" id="banner-dismiss" type="button">DISMISS</button>
+    </div>
+
+    <!-- /meta load failure -->
+    <div class="state-error" id="meta-error" style="margin-bottom:24px" hidden>
+      <h3>Couldn't load model metadata</h3>
+      <p id="meta-error-msg"></p>
+    </div>
+
+    <div class="split">
+
+      <!-- ─── Form ─── -->
+      <form class="form-card" id="predict-form" novalidate>
+
+        <!-- B1 — Occurrence timing -->
+        <section class="section">
+          <div class="section-head">
+            <span class="section-num">B1</span>
+            <h2>When did it happen?</h2>
+            <span class="section-hint">Required</span>
+          </div>
+
+          <div class="timing-mode-row">
+            <span class="label">Input as</span>
+            <div class="segmented" role="tablist" aria-label="Occurrence timing mode">
+              <button type="button" id="mode-dt" class="active" data-mode="dt">Date &amp; time</button>
+              <button type="button" id="mode-parts" data-mode="parts">Parts (month / hour / day)</button>
+            </div>
+          </div>
+
+          <div class="timing-stack" id="timing-dt">
+            <div class="field">
+              <label>Occurrence date &amp; time <span class="code-pill">occ_dt</span></label>
+              <input type="datetime-local" class="control" id="occ_dt" />
+              <span class="err" data-err="occ_dt" hidden></span>
+              <span class="helper">When you (think you) parked the bike where it was last seen.</span>
+            </div>
+          </div>
+
+          <div class="timing-stack" id="timing-parts" hidden>
+            <div class="field-grid three">
+              <div class="field">
+                <label>Month <span class="code-pill">occ_month (1&ndash;12)</span></label>
+                <input type="number" min="1" max="12" class="control" id="occ_month" />
+                <span class="err" data-err="occ_month" hidden></span>
+              </div>
+              <div class="field">
+                <label>Hour (24h) <span class="code-pill">occ_hour (0&ndash;23)</span></label>
+                <input type="number" min="0" max="23" class="control" id="occ_hour" />
+                <span class="err" data-err="occ_hour" hidden></span>
+              </div>
+              <div class="field">
+                <label>Day of week <span class="code-pill">occ_dow (0=Mon)</span></label>
+                <select class="control" id="occ_dow"></select>
+                <span class="err" data-err="occ_dow" hidden></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- B2 — Report timing -->
+        <section class="section">
+          <div class="section-head">
+            <span class="section-num">B2</span>
+            <h2>When did you report it?</h2>
+            <span class="section-hint">Optional</span>
+          </div>
+          <div class="field-grid">
+            <div class="field span-2">
+              <label>Report date &amp; time <span class="code-pill">report_dt</span></label>
+              <input type="datetime-local" class="control" id="report_dt" />
+              <span class="err" data-err="report_dt" hidden></span>
+              <span class="helper">If omitted, delay defaults to 0h. Must be on or after occurrence; backend clamps at 720h max.</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- B3 — Bike details -->
+        <section class="section">
+          <div class="section-head">
+            <span class="section-num">B3</span>
+            <h2>About the bike</h2>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label>Estimated value <span class="code-pill">BIKE_COST · CAD</span></label>
+              <input type="number" min="0" max="20000" step="1" placeholder="e.g. 1200" class="control" id="BIKE_COST" />
+              <span class="err" data-err="BIKE_COST" hidden></span>
+              <span class="helper">$0&ndash;$20,000. Values outside that range are clamped.</span>
+            </div>
+            <div class="field">
+              <label>Type <span class="code-pill">BIKE_TYPE</span></label>
+              <select class="control" id="BIKE_TYPE" data-cat="BIKE_TYPE"></select>
+              <span class="err" data-err="BIKE_TYPE" hidden></span>
+            </div>
+            <div class="field span-2">
+              <label>Colour <span class="code-pill">BIKE_COLOUR</span></label>
+              <select class="control" id="BIKE_COLOUR" data-cat="BIKE_COLOUR"></select>
+              <span class="err" data-err="BIKE_COLOUR" hidden></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- B4 — Location / context -->
+        <section class="section">
+          <div class="section-head">
+            <span class="section-num">B4</span>
+            <h2>Location &amp; context</h2>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label>Police division <span class="code-pill">DIVISION</span></label>
+              <select class="control" id="DIVISION" data-cat="DIVISION"></select>
+              <span class="err" data-err="DIVISION" hidden></span>
+            </div>
+            <div class="field">
+              <label>Premises type <span class="code-pill">PREMISES_TYPE</span></label>
+              <select class="control" id="PREMISES_TYPE" data-cat="PREMISES_TYPE"></select>
+              <span class="err" data-err="PREMISES_TYPE" hidden></span>
+            </div>
+            <div class="field span-2">
+              <label>Specific location <span class="code-pill">LOCATION_TYPE</span></label>
+              <select class="control" id="LOCATION_TYPE" data-cat="LOCATION_TYPE"></select>
+              <span class="err" data-err="LOCATION_TYPE" hidden></span>
+            </div>
+            <div class="field span-2">
+              <label>Primary offence <span class="code-pill">PRIMARY_OFFENCE</span></label>
+              <select class="control" id="PRIMARY_OFFENCE" data-cat="PRIMARY_OFFENCE"></select>
+              <span class="err" data-err="PRIMARY_OFFENCE" hidden></span>
+            </div>
+          </div>
+        </section>
+
+        <div class="actions">
+          <button type="submit" class="btn btn-primary" id="predict-btn">Predict outcome &rarr;</button>
+          <button type="button" class="btn btn-ghost" id="example-btn">Use example</button>
+          <button type="button" class="btn-link" id="reset-btn">Clear form</button>
+        </div>
+      </form>
+
+      <!-- ─── Result panel ─── -->
+      <div class="result-card">
+        <div class="result-head">
+          <h2>Prediction</h2>
+          <span class="result-state-pill" id="result-state-pill">[ Idle ]</span>
+        </div>
+
+        <div id="result">
+          <!-- idle -->
+          <div class="state-idle" data-show="idle">
+            <svg width="48" height="48" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <circle cx="8" cy="22" r="5.5" stroke="currentColor" stroke-width="2" />
+              <circle cx="24" cy="22" r="5.5" stroke="currentColor" stroke-width="2" />
+              <path d="M8 22 L16 12 L24 22 M16 12 L13 22 M16 12 L20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <h3>No prediction yet</h3>
+            <p>Fill in the form and hit Predict. We'll tell you the odds &mdash; and we'll be honest about how low they usually are.</p>
+          </div>
+
+          <!-- loading -->
+          <div class="state-loading" data-show="loading" hidden>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+              <span class="spinner"></span>
+              <span style="font-family:var(--font-mono);font-size:12px;color:var(--ink-3);letter-spacing:0.06em">POST /predict</span>
+            </div>
+          </div>
+
+          <!-- error -->
+          <div class="state-error" data-show="error" hidden>
+            <h3>Couldn't make a prediction</h3>
+            <p id="error-message"></p>
+          </div>
+
+          <!-- success -->
+          <div data-show="success" hidden>
+            <div class="verdict" id="verdict">
+              <span class="emoji" id="verdict-emoji" aria-hidden="true"></span>
+              <div>
+                <div class="badge" id="verdict-badge"></div>
+                <div class="label" id="verdict-label"></div>
+              </div>
+            </div>
+
+            <div class="prob-block">
+              <div class="prob-row">
+                <span class="prob-label">P(returned)</span>
+                <span class="prob-value" id="prob-value"></span>
+              </div>
+              <div class="meter-bar"><div class="fill" id="meter-fill"></div></div>
+              <div class="meter-scale"><span>0%</span><span>50%</span><span>100%</span></div>
+              <p class="context-note">For context: historically only ~1&ndash;3% of stolen bikes in this dataset are marked returned. A low number isn't a bug; it's the base rate.</p>
+            </div>
+
+            <div class="fold-warning" id="fold-warning" hidden></div>
+
+            <div class="features-block">
+              <h3>Inputs used by the model</h3>
+              <dl class="features-list" id="features-list"></dl>
+            </div>
+
+            <button type="button" class="raw-toggle" id="raw-toggle">
+              <span class="chev">&#9656;</span> Raw response JSON
+            </button>
+            <pre class="raw-json" id="raw-json" hidden></pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <footer class="app-footer">
+      <span>GET / · POST /predict · GET /meta · GET /health</span>
+      <span>Toronto Police Service open data · model predictions are estimates</span>
+    </footer>
+
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
